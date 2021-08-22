@@ -3,41 +3,37 @@ package com.ldg.httpclient.domain;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.UncheckedIOException;
 import java.net.http.HttpResponse;
-import java.util.function.Supplier;
 
-public class JsonBodyHandler<T> implements HttpResponse.BodyHandler<Supplier<T>> {
+public class JsonBodyHandler<T> implements HttpResponse.BodyHandler<T> {
+    private final ObjectMapper objectMapper;
+    private final Class<T> type;
 
-    private final Class<T> someClass;
+    public static <T> JsonBodyHandler<T> of(final Class<T> type) {
+        return jsonBodyHandler(new ObjectMapper(), type);
+    }
 
-    public JsonBodyHandler(Class<T> someClass) {
-        this.someClass = someClass;
+    public static <T> JsonBodyHandler<T> jsonBodyHandler(final ObjectMapper objectMapper,
+                                                         final Class<T> type) {
+        return new JsonBodyHandler<>(objectMapper, type);
+    }
+
+    private JsonBodyHandler(ObjectMapper objectMapper, Class<T> type) {
+        this.objectMapper = objectMapper;
+        this.type = type;
     }
 
     @Override
-    public HttpResponse.BodySubscriber<Supplier<T>> apply(HttpResponse.ResponseInfo responseInfo) {
-
-        return subscriberOf(someClass);
+    public HttpResponse.BodySubscriber<T> apply(final HttpResponse.ResponseInfo responseInfo) {
+        return HttpResponse.BodySubscribers.mapping(HttpResponse.BodySubscribers.ofByteArray(),
+                byteArray -> readValue(byteArray, this.type));
     }
 
-    private static <T> HttpResponse.BodySubscriber<Supplier<T>> subscriberOf(Class<T> targetType) {
-        HttpResponse.BodySubscriber<InputStream> upstream = HttpResponse.BodySubscribers.ofInputStream();
-
-        return HttpResponse.BodySubscribers.mapping(
-                upstream,
-                inputStream -> from(inputStream, targetType));
-    }
-
-    private static <T> Supplier<T> from(InputStream inputStream, Class<T> targetType) {
-        return () -> {
-            try (InputStream stream = inputStream) {
-                ObjectMapper objectMapper = new ObjectMapper();
-                return objectMapper.readValue(stream, targetType);
-            } catch (IOException e) {
-                throw new UncheckedIOException(e);
-            }
-        };
+    private T readValue (byte[] source, Class<T> tClass) {
+        try {
+            return this.objectMapper.readValue(source, tClass);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 }

@@ -14,7 +14,6 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.net.http.HttpTimeoutException;
 import java.time.Duration;
-import java.util.concurrent.CompletionException;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -33,26 +32,38 @@ class TestClientTest {
                 .testStrings(Lists.newArrayList("test1", "test2"))
                 .build();
 
+
         var hRequest = HttpRequest.newBuilder()
-        /**  여기를 채워넣어주세요 TestController 참고
+        /** 알맞게 POST method의 RequestBody를 채워보세요 참고 : TestController
                 .POST()
-         **/
+        */
                 .uri(URI.create(BASE_URL))
                 .timeout(Duration.ofMinutes(1))
                 .header("Content-Type", "application/json")
                 .build();
 
         var syncResponse =
-                httpClient.send(hRequest, new JsonBodyHandler<>(TestResponse.class));
+                httpClient.send(hRequest, JsonBodyHandler.of(TestResponse.class));
+
+        /**
+         * syncResponse를 적절하게 출력해보세요
+         * */
 
         var asyncResponse =
-                httpClient.sendAsync(hRequest, new JsonBodyHandler<>(TestResponse.class));
+                httpClient.sendAsync(hRequest, JsonBodyHandler.of(TestResponse.class));
+
+        /**
+         * asyncResponse를 적절하게 출력해보세요
+         * */
 
         var asyncResponse2 =
                 httpClient.sendAsync(hRequest, HttpResponse.BodyHandlers.ofString())
                         .thenApply(HttpResponse::body)
                         .thenApply(body -> readValue(body, TestResponse.class));
 
+        /**
+         * asyncResponse2를 적절하게 출력해보세요
+         * */
     }
 
     @Test
@@ -62,15 +73,15 @@ class TestClientTest {
 
         var hRequest = HttpRequest.newBuilder()
                 .GET()
-                .uri(URI.create(BASE_URL+id))
+                .uri(URI.create(BASE_URL+"/"+id))
                 .timeout(Duration.ofMinutes(1))
                 .header("Content-Type", "application/json")
                 .build();
 
         var syncResponse =
-                httpClient.send(hRequest, new JsonBodyHandler<>(TestResponse.class));
+                httpClient.send(hRequest, JsonBodyHandler.of(TestResponse.class));
 
-        System.out.println(syncResponse.body().get().toString());
+        System.out.println(syncResponse.body().toString());
     }
 
     @Test
@@ -80,15 +91,15 @@ class TestClientTest {
 
         var hRequest1 = HttpRequest.newBuilder()
                 .GET()
-                .uri(URI.create(BASE_URL+id))
+                .uri(URI.create(BASE_URL+"/sleep/"+id))
                 .timeout(Duration.ofMinutes(1))
                 .header("Content-Type", "application/json")
                 .build();
 
         var syncResponse =
-                httpClient.send(hRequest1, new JsonBodyHandler<>(TestResponse.class));
+                httpClient.send(hRequest1, JsonBodyHandler.of(TestResponse.class));
 
-        System.out.println(syncResponse.body().get().toString());
+        System.out.println(syncResponse.body().toString());
 
         var hRequest2 = HttpRequest.newBuilder()
                 .GET()
@@ -98,7 +109,7 @@ class TestClientTest {
                 .build();
 
         assertThrows(HttpTimeoutException.class, () ->
-                httpClient.send(hRequest2, new JsonBodyHandler<>(TestResponse.class)));
+                httpClient.send(hRequest2, JsonBodyHandler.of(TestResponse.class)));
 
     }
 
@@ -106,7 +117,7 @@ class TestClientTest {
         try {
             return objectMapper.readValue(source, tClass);
         } catch (IOException e) {
-            throw new CompletionException(e);
+            throw new RuntimeException(e);
         }
     }
 }
